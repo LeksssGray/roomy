@@ -1,7 +1,11 @@
 # Roomy — русская версия
 
-Локальная русификация [Roomy](https://github.com/krezio/roomy) версии 0.1.2.
+Русификация [Roomy](https://github.com/krezio/roomy) версии 0.1.2.
 Автор оригинального приложения — krezio; лицензия MIT сохранена.
+Русская версия — А. О. Серов. Личный знак АОС перенесён из проекта АЛЁНА:
+SVG-оригинал находится в `docs/brand/aos-dark.svg`, WPF-вариант — в
+`src/Roomy/Controls/DeveloperMark.xaml`. Знак показан в шапке приложения,
+настройках и карточке результата. Геометрия и палитра исходного знака сохранены.
 
 Переведены экраны приложения, настройки, меню значка в области уведомлений,
 уведомления Windows, категории и пояснения очистки, предупреждения и карточка
@@ -10,7 +14,7 @@
 
 ## Запуск
 
-Русская portable-сборка: `dist/ru/Roomy.exe`.
+Русская portable-сборка: `dist/ru-brand/Roomy.exe`.
 Первоначальный официальный английский релиз: `dist/Roomy-portable.exe`.
 Файлы сборок не хранятся в Git.
 
@@ -26,13 +30,13 @@
 dotnet run --project src/Roomy
 dotnet test tests/Roomy.Tests -c Release
 dotnet run --project tests/Roomy.DesktopChecks -c Release
-dotnet publish src/Roomy -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o dist/ru
+dotnet publish src/Roomy -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o dist/ru-brand
 ```
 
 Проверка внешнего вида на вымышленных данных, без очистки реальных файлов:
 
 ```powershell
-dist/ru/Roomy.exe --shots artifacts/shots-ru
+dist/ru-brand/Roomy.exe --shots artifacts/shots-ru
 dotnet run --project tests/Roomy.DesktopChecks -c Release -- --snapshot artifacts/settings-ru.png
 ```
 

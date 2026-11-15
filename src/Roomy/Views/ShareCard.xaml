@@ -14,6 +14,11 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
+            <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <c:DeveloperMark Width="42" Height="42" Margin="0,0,12,0" />
+                <TextBlock Text="Русская версия · А. О. Серов" FontSize="20"
+                           Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
+            </StackPanel>
             <StackPanel Orientation="Horizontal">
                 <c:LogoMark Width="46" Height="46" />
                 <TextBlock Text="Roomy" FontSize="32" FontWeight="Bold" Margin="16,0,0,0" VerticalAlignment="Center" />
