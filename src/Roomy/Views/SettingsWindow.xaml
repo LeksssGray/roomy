@@ -1,0 +1,145 @@
+<Window x:Class="Roomy.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Настройки Roomy" Width="610" Height="740" MinWidth="540" MinHeight="560"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{StaticResource BgBrush}" Foreground="{StaticResource TextBrush}"
+        FontFamily="{StaticResource UiFont}" FontSize="14">
+    <Window.Resources>
+        <Style x:Key="SettingCombo" TargetType="ComboBox">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ComboBoxItem">
+                        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                        <Setter Property="Padding" Value="10,8" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ComboBoxItem">
+                                    <Border x:Name="Row" Background="Transparent" Padding="{TemplateBinding Padding}"><ContentPresenter /></Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Row" Property="Background" Value="{StaticResource HoverBrush}" /></Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton Focusable="False" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="{StaticResource Surface2Brush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="5" />
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <ContentPresenter Margin="8,6,22,6" IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" />
+                            <TextBlock Text="&#xE70D;" FontFamily="{StaticResource IconFont}" FontSize="10" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,7,0" IsHitTestVisible="False" />
+                            <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False">
+                                <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" Background="{StaticResource Surface2Brush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="5">
+                                    <StackPanel IsItemsHost="True" />
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SettingCheck" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid Background="Transparent">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Border x:Name="Box" Width="22" Height="22" CornerRadius="6" HorizontalAlignment="Left"
+                                    BorderBrush="#45454D" BorderThickness="1.5" Background="{StaticResource Surface2Brush}">
+                                <TextBlock x:Name="Mark" Text="" FontFamily="{StaticResource IconFont}" FontSize="12"
+                                           Foreground="#111113" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ContentPresenter Grid.Column="1" VerticalAlignment="Center" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="Box" Property="BorderThickness" Value="0" />
+                                <Setter TargetName="Mark" Property="Text" Value="&#xE73E;" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45" /></Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Box" Property="BorderBrush" Value="White" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="Hint" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Margin" Value="32,6,0,0" />
+        </Style>
+    </Window.Resources>
+    <Grid Margin="26">
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <StackPanel Margin="0,0,0,20">
+            <TextBlock Text="Помощь в фоновом режиме" FontSize="25" FontWeight="SemiBold" />
+            <TextBlock Text="Выберите, когда Roomy будет выполнять проверки. Все данные остаются на компьютере." Foreground="{StaticResource MutedBrush}" Margin="0,8,0,0" TextWrapping="Wrap" />
+        </StackPanel>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="Options" Margin="0,0,12,0">
+                <Border Style="{StaticResource Card}" Padding="18" Margin="0,0,0,14">
+                    <StackPanel>
+                        <CheckBox x:Name="BackgroundCheck" Content="Оставлять Roomy в области уведомлений" Style="{StaticResource SettingCheck}" Click="Background_Click" />
+                        <TextBlock Style="{StaticResource Hint}" Text="После закрытия окна проверки продолжатся. Для выхода выберите «Выйти из Roomy» в меню значка." />
+                        <CheckBox x:Name="StartupCheck" Content="Запускать вместе с Windows" Style="{StaticResource SettingCheck}" Margin="0,20,0,0" Click="EnableBackground_Click" />
+                        <TextBlock Style="{StaticResource Hint}" Text="Запускать без открытия окна при входе в систему." />
+                        <TextBlock x:Name="StartupMessage" Style="{StaticResource Hint}" Foreground="{StaticResource WarnBrush}" />
+                        <Button Content="Настройки автозагрузки Windows" Style="{StaticResource SecondaryButton}" FontSize="12" Padding="12,7"
+                                HorizontalAlignment="Left" Margin="32,10,0,0" Click="StartupSettings_Click" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Padding="18" Margin="0,0,0,14">
+                    <StackPanel>
+                        <CheckBox x:Name="LowSpaceCheck" Content="Сообщать, если на системном диске мало места" Style="{StaticResource SettingCheck}" Click="EnableBackground_Click" />
+                        <TextBlock Style="{StaticResource Hint}" Text="Быстрая проверка свободного места. Не более одного напоминания в день." />
+                        <WrapPanel Margin="32,14,0,0">
+                            <TextBlock Text="Менее" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBox x:Name="ThresholdBox" Width="58" Padding="6" Background="{StaticResource Surface2Brush}"
+                                     Foreground="{StaticResource TextBrush}" BorderBrush="{StaticResource LineBrush}" AutomationProperties.Name="Порог свободного места в ГБ" />
+                            <TextBlock Text="ГБ, проверять каждые" VerticalAlignment="Center" Margin="8,0" />
+                            <ComboBox x:Name="IntervalBox" Width="128" Style="{StaticResource SettingCombo}" SelectedValuePath="Tag" AutomationProperties.Name="Интервал проверки">
+                                <ComboBoxItem Content="30 минут" Tag="30" />
+                                <ComboBoxItem Content="60 минут" Tag="60" />
+                            </ComboBox>
+                        </WrapPanel>
+                        <CheckBox x:Name="WeeklyCheck" Content="Еженедельно проверять накопившийся кэш" Style="{StaticResource SettingCheck}" Margin="0,22,0,0" Click="EnableBackground_Click" />
+                        <TextBlock Style="{StaticResource Hint}" Text="Проверяет временные файлы и кэш, когда компьютер не используется и подключён к сети питания. Напоминает, если можно освободить от 1 ГБ. Что удалять — решаете вы." />
+                        <TextBlock x:Name="PauseStatus" Style="{StaticResource Hint}" Margin="32,18,0,0" />
+                        <WrapPanel Margin="32,10,0,0">
+                            <Button Content="Пауза на сутки" Style="{StaticResource SecondaryButton}" FontSize="12" Padding="12,7" Margin="0,0,8,8" Click="Pause_Click" />
+                            <Button Content="Продолжить" Style="{StaticResource SecondaryButton}" FontSize="12" Padding="12,7" Margin="0,0,0,8" Click="Resume_Click" />
+                        </WrapPanel>
+                        <Button Content="Настройки уведомлений Windows" Style="{StaticResource SecondaryButton}" FontSize="12" Padding="12,7"
+                                HorizontalAlignment="Left" Margin="32,2,0,0" Click="NotificationSettings_Click" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+        <StackPanel Grid.Row="2" Margin="0,16,0,0">
+            <TextBlock x:Name="StatusText" TextWrapping="Wrap" Foreground="{StaticResource WarnBrush}" FontSize="12.5" Margin="0,0,0,12" />
+            <Grid>
+            <TextBlock x:Name="VersionText" FontSize="12" Foreground="{StaticResource FaintBrush}" VerticalAlignment="Center" AutomationProperties.Name="Версия Roomy" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Отмена" IsCancel="True" Click="Cancel_Click" Style="{StaticResource SecondaryButton}" Margin="0,0,10,0" />
+                <Button x:Name="SaveButton" Content="Сохранить" IsDefault="True" Style="{StaticResource PrimaryButton}" Click="Save_Click" />
+            </StackPanel>
+            </Grid>
+        </StackPanel>
+    </Grid>
+</Window>

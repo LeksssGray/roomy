@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.1" PrivateAssets="all" />
+    <Using Include="Xunit" />
+    <Compile Include="../../src/Roomy/Core/Preferences.cs" Link="Core/Preferences.cs" />
+    <Compile Include="../../src/Roomy/Core/Format.cs" Link="Core/Format.cs" />
+    <Compile Include="../../src/Roomy/Services/SingleInstance.cs" Link="Services/SingleInstance.cs" />
+    <Compile Include="../../src/Roomy/Services/NotificationService.cs" Link="Services/NotificationService.cs" />
+    <Compile Include="../../src/Roomy/Services/StartupRegistration.cs" Link="Services/StartupRegistration.cs" />
+  </ItemGroup>
+</Project>

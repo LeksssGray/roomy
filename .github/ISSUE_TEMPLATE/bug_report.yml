@@ -1,0 +1,47 @@
+name: Bug report
+description: Something in Roomy didn't work the way it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, and what went wrong?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+  - type: input
+    id: version
+    attributes:
+      label: Roomy version
+      description: Shown at the bottom of the Settings window.
+      placeholder: "0.1.2"
+    validations:
+      required: true
+  - type: dropdown
+    id: windows
+    attributes:
+      label: Windows version
+      options:
+        - Windows 11
+        - Windows 10
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install Roomy?
+      options:
+        - Installer (Roomy-Setup.exe)
+        - Portable (Roomy-portable.exe)
+        - Microsoft Store
+        - Built from source
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots help a lot. Please don't share file paths that contain personal information.

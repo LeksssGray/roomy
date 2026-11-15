@@ -1,0 +1,31 @@
+name: Suggest something to clean
+description: A cache or junk folder Roomy should know about
+labels: [enhancement]
+body:
+  - type: input
+    id: app
+    attributes:
+      label: App or feature
+      placeholder: "e.g. Spotify, Adobe Premiere, Epic Games Launcher"
+    validations:
+      required: true
+  - type: input
+    id: path
+    attributes:
+      label: Folder location
+      description: Use environment variables instead of your user name where you can.
+      placeholder: "%LOCALAPPDATA%\Example\Cache"
+    validations:
+      required: true
+  - type: textarea
+    id: safe
+    attributes:
+      label: Why is it safe to delete?
+      description: Does the app rebuild it automatically? Would anything be lost (downloads, settings, logins)?
+    validations:
+      required: true
+  - type: input
+    id: size
+    attributes:
+      label: Typical size
+      placeholder: "e.g. 2–5 GB"
