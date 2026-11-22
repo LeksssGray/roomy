@@ -3,4 +3,7 @@ obj/
 .vs/
 *.user
 /artifacts/
-/dist/
+/dist/*
+!/dist/ru-brand/
+/dist/ru-brand/*
+!/dist/ru-brand/Roomy.exe

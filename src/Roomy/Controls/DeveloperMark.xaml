@@ -1,7 +1,7 @@
 <UserControl x:Class="Roomy.Controls.DeveloperMark"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             AutomationProperties.Name="Личный знак АОС — Алексей Олегович Серов">
+             AutomationProperties.Name="Личный знак АОС">
     <!-- Exact vector geometry and dark-background palette from docs/brand/aos-dark.svg. -->
     <Viewbox Stretch="Uniform">
         <Grid Width="140" Height="140">
