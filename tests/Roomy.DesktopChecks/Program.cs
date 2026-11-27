@@ -38,11 +38,14 @@ static class Program
                 if (args.Contains("--programs-real"))
                 {
                     using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(40));
-                    var programs = await Task.Run(() => ProgramInventory.Measure(ProgramInventory.Read(), [], timeout.Token));
+                    var programs = await Task.Run(() => ProgramInventory.Measure(
+                        ProgramEvidence.Enrich(ProgramInventory.Read(), timeout.Token), [], timeout.Token));
                     if (!programs.Any(p => p.HasSize && p.Bytes > 0))
                         throw new InvalidOperationException("The Windows program inventory returned no measured folders.");
                     var sources = string.Join(", ", programs.GroupBy(p => p.Program.Source).Select(g => $"{g.Key}: {g.Count()}"));
                     Console.WriteLine($"PASS: Windows programs ({sources}), {programs.Count(p => p.HasSize)} with measured folders.");
+                    Console.WriteLine($"PASS: {programs.Sum(p => p.Program.Registry.Count)} registry references, " +
+                        $"{programs.SelectMany(p => p.Folders).Count(f => f.Folder.Kind == ProgramFolderKind.Project)} project links.");
                 }
                 if (args.Contains("--notifications")) CheckNotifications();
                 Console.WriteLine("Desktop checks passed.");

@@ -1,0 +1,42 @@
+<Window x:Class="Roomy.Views.DiskToolsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Диагностика дисков · Roomy" Width="690" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{StaticResource BgBrush}" Foreground="{StaticResource TextBrush}"
+        FontFamily="{StaticResource UiFont}" FontSize="14">
+    <Grid Margin="26">
+        <Grid.Resources>
+            <Style TargetType="TextBlock" x:Key="DiskDescription">
+                <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+                <Setter Property="Margin" Value="0,6,0,16" />
+            </Style>
+        </Grid.Resources>
+        <StackPanel>
+            <TextBlock Text="Диагностика дисков" FontFamily="{StaticResource DisplayFont}" FontSize="27"
+                       FontWeight="Bold" Margin="0,0,0,16" />
+            <StackPanel Orientation="Horizontal">
+                <ComboBox x:Name="Volume" Width="95" Margin="0,0,8,0" Style="{StaticResource DarkComboBox}"
+                          AutomationProperties.Name="Том для проверки" />
+                <Button x:Name="CheckButton" Content="Проверить том" Style="{StaticResource SecondaryButton}" Click="Check_Click" />
+            </StackPanel>
+            <TextBlock Style="{StaticResource DiskDescription}"
+                       Text="CHKDSK проверяет файловую систему в режиме чтения. Windows запросит права администратора." />
+            <Button x:Name="HealthButton" Content="Состояние накопителей" Style="{StaticResource SecondaryButton}"
+                    HorizontalAlignment="Left" Click="Health_Click" />
+            <TextBlock Style="{StaticResource DiskDescription}"
+                       Text="Показывает тип носителя и состояние, которое сообщает подсистема хранения Windows." />
+            <Button x:Name="OptimizeButton" Content="Оптимизация дисков Windows" Style="{StaticResource SecondaryButton}"
+                    HorizontalAlignment="Left" Click="Optimize_Click" />
+            <TextBlock Style="{StaticResource DiskDescription}"
+                       Text="Открывает штатное средство Windows. Оно выбирает тип оптимизации для носителя. Для диагностики ошибок используйте проверку тома." />
+            <Button x:Name="MemoryButton" Content="Диагностика оперативной памяти" Style="{StaticResource SecondaryButton}"
+                    HorizontalAlignment="Left" Click="Memory_Click" />
+            <TextBlock Style="{StaticResource DiskDescription}"
+                       Text="Открывает средство проверки ОЗУ. Время перезагрузки выбирается в окне Windows." />
+            <TextBlock x:Name="StatusText" TextWrapping="Wrap" Foreground="{StaticResource WarnBrush}"
+                       AutomationProperties.LiveSetting="Polite" />
+        </StackPanel>
+    </Grid>
+</Window>

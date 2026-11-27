@@ -281,6 +281,7 @@
                                 </StackPanel>
                             </Button>
                             <Button Style="{StaticResource SecondaryButton}" Content="Программы" Margin="12,0,0,0" Click="Programs_Click" />
+                            <Button Style="{StaticResource SecondaryButton}" Content="Диагностика дисков" Margin="12,0,0,0" Click="DiskTools_Click" />
                         </StackPanel>
                     </StackPanel>
                 </Grid>

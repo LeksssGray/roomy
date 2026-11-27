@@ -15,6 +15,7 @@ static class ProgramChecks
     internal static async Task Run(string? snapshot)
     {
         CheckMeasurement();
+        CheckEvidence();
         var window = new ProgramsWindow(demo: true)
         {
             Left = -20000, Top = -20000, ShowActivated = false,
@@ -28,9 +29,15 @@ static class ProgramChecks
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             while (list.Items.Count == 0) await Task.Delay(25, timeout.Token);
             Require(list.Items.Count == 4, "The programs list should load demo entries.");
+            var residues = Find<CheckBox>("ResidueFilter");
+            residues.IsChecked = true;
+            Require(list.Items.Count == 0, "The residue filter should exclude installed programs.");
+            residues.IsChecked = false;
             var search = Find<TextBox>("SearchBox");
             search.Text = "Visual";
             Require(list.Items.Count == 1, "Search should narrow the list by program name.");
+            search.Text = @"Projects\Demo";
+            Require(list.Items.Count == 1, "Search should match a project folder path.");
             Require(!Find<Button>("RemoveButton").IsEnabled && !Find<Button>("ProjectButton").IsEnabled,
                 "Demo must not uninstall programs or persist links.");
             search.Clear();
@@ -73,6 +80,20 @@ static class ProgramChecks
             if (window.IsVisible) window.Close();
         }
         Console.WriteLine("PASS: program search, drive filter, treemap selection, folder navigation and demo restrictions.");
+        var tools = new DiskToolsWindow([@"C:\"], demo: true)
+        {
+            Left = -20000, Top = -20000, ShowActivated = false,
+            WindowStartupLocation = WindowStartupLocation.Manual,
+        };
+        tools.Show();
+        try
+        {
+            Require(new[] { "CheckButton", "HealthButton", "OptimizeButton", "MemoryButton" }
+                .All(name => tools.FindName(name) is Button { IsEnabled: false }),
+                "The disk tools must stay inactive in demo mode.");
+        }
+        finally { tools.Close(); }
+        Console.WriteLine("PASS: disk diagnostics dialog and demo restrictions.");
     }
 
     static void CheckMeasurement()
@@ -125,5 +146,66 @@ static class ProgramChecks
     static void Require(bool condition, string message)
     {
         if (!condition) throw new InvalidOperationException(message);
+    }
+
+    static void CheckEvidence()
+    {
+        var root = Directory.CreateTempSubdirectory("Roomy-evidence-");
+        try
+        {
+            var config = root.CreateSubdirectory("configuration");
+            var project = root.CreateSubdirectory("project with spaces");
+            var second = root.CreateSubdirectory("second");
+            var data = root.CreateSubdirectory("application data");
+            var guessed = root.CreateSubdirectory("guessed");
+            var history = new ProgramHistory(Path.Combine(root.FullName, "history.json"));
+            var workspace = Path.Combine(config.FullName, "test.code-workspace");
+            File.WriteAllText(workspace, "{ // VS Code accepts comments\n \"folders\": [{\"path\": \"../second\"},], }");
+            string Record(string name, string key, string value)
+            {
+                var directory = config.CreateSubdirectory(name);
+                var file = Path.Combine(directory.FullName, "workspace.json");
+                File.WriteAllText(file, System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string> { [key] = value }));
+                return file;
+            }
+            Record("single", "folder", new Uri(project.FullName).AbsoluteUri);
+            Record("multi", "workspace", new Uri(workspace).AbsoluteUri);
+            Record("remote", "folder", "vscode-remote://host/folder");
+            Record("invalid", "workspace", "file:///missing/inaccessible.code-workspace");
+            var associated = ProgramEvidence.ReadCodeProjects(config.FullName, CancellationToken.None).ToArray();
+            Require(associated.Length == 2 && associated.Any(f => f.Path == project.FullName) &&
+                associated.Any(f => f.Path == second.FullName), "Folder and multi-root workspace evidence must resolve local paths only.");
+
+            File.WriteAllBytes(Path.Combine(data.FullName, "data.bin"), new byte[15]);
+            File.WriteAllBytes(Path.Combine(guessed.FullName, "extra.bin"), new byte[50]);
+            var folders = new ProgramFolder[]
+            {
+                new(data.FullName, ProgramFolderKind.Data),
+                new(guessed.FullName, ProgramFolderKind.Data) { Suggested = true },
+                associated[0],
+            };
+            var installed = new InstalledProgram("test", "Test", "", "", ProgramSource.Desktop, null, null, folders);
+            var first = history.Merge([installed], CancellationToken.None);
+            Require(!first.HistoryError && first.Programs.Count == 1 && !first.Programs[0].IsResidue,
+                "Installed programs must seed the footprint history.");
+            var secondScan = history.Merge([], CancellationToken.None);
+            var residue = ProgramInventory.Measure(secondScan.Programs, [new(installed.Id, project.FullName)], CancellationToken.None).Single();
+            Require(residue.Program.IsResidue && residue.Bytes == 15 && residue.Folders.Count == 2 &&
+                residue.Folders.Single(f => f.Folder.Suggested).Bytes == 50,
+                "Project links and filename-only matches must not count towards confirmed residues.");
+            var newOwner = installed with { Id = "new-owner", Folders = [new(data.FullName, ProgramFolderKind.Data)] };
+            var reused = history.Merge([newOwner], CancellationToken.None).Programs.Single(p => p.IsResidue);
+            Require(reused.Folders.All(f => f.Path != data.FullName), "Reused folders should belong to the active program.");
+
+            Require(ProgramEvidence.ExecutablePath("\"" + Path.Combine(data.FullName, "app.exe") + "\" /background") ==
+                Path.Combine(data.FullName, "app.exe") && ProgramEvidence.ExecutablePath("cmd.exe /c sample") is null,
+                "Registry matching must use absolute executable paths.");
+            var volume = DiskTools.VolumeCheck(@"d:\");
+            Require(volume is not null && volume.Verb == "runas" && volume.ArgumentList.Last().EndsWith("'D:'") &&
+                DiskTools.VolumeCheck(@"C:\folder") is null && DiskTools.VolumeCheck("C: & other.exe") is null,
+                "The volume check must construct a read-only Windows command for one validated drive letter.");
+        }
+        finally { root.Delete(recursive: true); }
+        Console.WriteLine("PASS: workspace metadata, persisted residues, registry executable matching and read-only disk command.");
     }
 }

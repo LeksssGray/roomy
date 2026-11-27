@@ -7,12 +7,20 @@ public enum ProgramSource { Desktop, Msi, Store, Steam }
 public enum ProgramFolderKind { Installation, Cache, Temporary, Data, Project }
 public enum FolderSizeState { Measured, Partial, Unavailable, Shared, Missing }
 
-public sealed record ProgramFolder(string Path, ProgramFolderKind Kind);
+public sealed record ProgramFolder(string Path, ProgramFolderKind Kind)
+{
+    public string? Evidence { get; init; }
+    public bool Suggested { get; init; }
+}
 public sealed record InstalledProgram(string Id, string Name, string Publisher, string Version,
-    ProgramSource Source, string? RemovalId, long? ReportedBytes, IReadOnlyList<ProgramFolder> Folders);
+    ProgramSource Source, string? RemovalId, long? ReportedBytes, IReadOnlyList<ProgramFolder> Folders)
+{
+    public IReadOnlyList<ProgramRegistryItem> Registry { get; init; } = [];
+    public bool IsResidue { get; init; }
+}
 public sealed record MeasuredFolder(ProgramFolder Folder, long Bytes, FolderSizeState State)
 {
-    public bool HasSize => State is FolderSizeState.Measured or FolderSizeState.Partial;
+    public bool HasSize => !Folder.Suggested && State is (FolderSizeState.Measured or FolderSizeState.Partial);
 }
 public sealed record ProgramUsage(InstalledProgram Program, IReadOnlyList<MeasuredFolder> Folders)
 {
@@ -75,7 +83,7 @@ public static class ProgramInventory
     static void ReadRegistry(List<InstalledProgram> apps, RegistryHive hive, RegistryView view)
     {
         using var registry = RegistryKey.OpenBaseKey(hive, view);
-        using var uninstall = registry.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall");
+        using var uninstall = registry.OpenSubKey(ProgramEvidence.UninstallKey);
         if (uninstall is null) return;
         foreach (var key in uninstall.GetSubKeyNames())
         {
@@ -91,11 +99,18 @@ public static class ProgramInventory
                 var publisher = Value("Publisher");
                 var msi = entry.GetValue("WindowsInstaller") is 1 && Guid.TryParseExact(key, "B", out _);
                 var folders = KnownFolders(name, publisher);
-                if (NormalizeFolder(location) is { } path) folders.Add(new(path, ProgramFolderKind.Installation));
+                if (NormalizeFolder(location) is { } path)
+                    folders.Add(new(path, ProgramFolderKind.Installation) { Evidence = "Путь установки из реестра" });
+                else if ((ProgramEvidence.InstallFolderFromExecutable(name, Value("DisplayIcon")) ??
+                          ProgramEvidence.InstallFolderFromExecutable(name, Value("UninstallString"))) is { } inferred)
+                    folders.Add(new(inferred, ProgramFolderKind.Installation) { Evidence = "Путь исполняемого файла из реестра" });
                 var registeredAction = entry.GetValue("NoRemove") is not 1 && !string.IsNullOrWhiteSpace(Value("UninstallString"));
                 apps.Add(new($"registry:{hive}:{key}", name.Trim(), publisher, Value("DisplayVersion"),
                     msi ? ProgramSource.Msi : ProgramSource.Desktop, registeredAction ? (msi ? key : "settings") : null,
-                    entry.GetValue("EstimatedSize") is int kib && kib > 0 ? kib * 1024L : null, folders));
+                    entry.GetValue("EstimatedSize") is int kib && kib > 0 ? kib * 1024L : null, folders)
+                {
+                    Registry = [new(hive, view, ProgramEvidence.UninstallKey + "\\" + key, null, "Запись установки")],
+                });
             }
             catch (Exception ex) when (IsAccessError(ex)) { }
         }
@@ -163,15 +178,18 @@ public static class ProgramInventory
         IReadOnlyList<ProjectLink> links, CancellationToken ct)
     {
         var programs = source.Select(app => (App: app, Folders: app.Folders
-            .Concat(links.Where(l => Paths.Equals(l.ProgramId, app.Id)).Select(l => new ProgramFolder(l.Path, ProgramFolderKind.Project)))
-            .Select(f => (Path: NormalizeFolder(f.Path), f.Kind)).Where(f => f.Path != null)
-            .Select(f => new ProgramFolder(f.Path!, f.Kind)).DistinctBy(f => f.Path, Paths).ToArray())).ToArray();
-        var owners = programs.SelectMany(app => app.Folders.Select(f => f.Path))
+            .Concat(links.Where(l => !app.IsResidue && Paths.Equals(l.ProgramId, app.Id))
+                .Select(l => new ProgramFolder(l.Path, ProgramFolderKind.Project) { Evidence = "Ручная привязка" }))
+            .Select(f => (Path: NormalizeFolder(f.Path), Folder: f)).Where(f => f.Path != null)
+            .Select(f => f.Folder with { Path = f.Path! }).OrderBy(f => f.Suggested)
+            .DistinctBy(f => f.Path, Paths).ToArray())).ToArray();
+        var owners = programs.SelectMany(app => app.Folders.Where(f => !f.Suggested).Select(f => f.Path))
             .GroupBy(p => p, Paths).ToDictionary(g => g.Key, g => g.Count(), Paths);
         var cuts = owners.Keys.ToHashSet(Paths);
         var sharedSizes = new Dictionary<string, long>(Paths);
         MeasuredFolder MeasureOwnedFolder(ProgramFolder folder)
         {
+            if (folder.Suggested) return MeasureFolder(folder, cuts, ct);
             if (owners[folder.Path] == 1) return MeasureFolder(folder, cuts, ct);
             if (!sharedSizes.TryGetValue(folder.Path, out var size))
             {
@@ -184,7 +202,8 @@ public static class ProgramInventory
         {
             ct.ThrowIfCancellationRequested();
             return new ProgramUsage(app.App, app.Folders.Select(MeasureOwnedFolder)
-                .Where(f => f.State != FolderSizeState.Missing || f.Folder.Kind is ProgramFolderKind.Installation or ProgramFolderKind.Project)
+                .Where(f => f.State != FolderSizeState.Missing || !app.App.IsResidue &&
+                    f.Folder.Kind is (ProgramFolderKind.Installation or ProgramFolderKind.Project))
                 .ToArray());
         }).ToList();
     }

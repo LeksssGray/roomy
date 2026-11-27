@@ -99,6 +99,12 @@ public partial class MainWindow : Window
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
     void Close_Click(object sender, RoutedEventArgs e) => Close();
 
+    void DiskTools_Click(object sender, RoutedEventArgs e)
+    {
+        _vm.RefreshDrives();
+        new DiskToolsWindow(_vm.Drives.Select(d => d.Root), _vm.IsDemo) { Owner = this }.ShowDialog();
+    }
+
     async void Programs_Click(object sender, RoutedEventArgs e)
     {
         var programs = new ProgramsWindow(_vm.IsDemo) { Owner = this };

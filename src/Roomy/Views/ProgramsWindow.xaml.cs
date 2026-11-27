@@ -13,6 +13,7 @@ public partial class ProgramsWindow : Window
 {
     readonly bool _demo;
     readonly ProgramProjects _projects = new(ProgramProjects.DefaultPath);
+    readonly ProgramHistory _history = new(ProgramHistory.DefaultPath);
     readonly CancellationTokenSource _lifetime = new();
     List<ProgramUsage> _programs = [];
     List<ProgramRow> _visible = [];
@@ -58,20 +59,35 @@ public partial class ProgramsWindow : Window
                     try { links = _projects.Load(); }
                     catch (Exception ex) when (ProgramInventory.IsAccessError(ex) || ex is JsonException) { readError = true; }
                 }
-                var programs = _demo ? DemoPrograms() : ProgramInventory.Measure(ProgramInventory.Read(), links, ct);
+                var historyError = false;
+                List<ProgramUsage> programs;
+                if (_demo) programs = DemoPrograms();
+                else
+                {
+                    var installed = ProgramEvidence.Enrich(ProgramInventory.Read(), ct);
+                    var inventory = _history.Merge(installed, ct);
+                    historyError = inventory.HistoryError;
+                    programs = ProgramInventory.Measure(inventory.Programs, links, ct);
+                }
                 string? removal = pending is null ? null : RemovalSummary(pending, programs, ct);
-                return (programs, links, readError, removal);
+                return (programs, links, readError, historyError, removal);
             }, ct);
             ct.ThrowIfCancellationRequested();
             _programs = result.programs;
             _links = result.links;
             _projectsReadable = !result.readError;
-            if (pending is not null && !_programs.Any(p => p.Program.Id == pending.Program.Id)) _beforeRemoval = null;
+            if (pending is not null && !_programs.Any(p => !p.Program.IsResidue && p.Program.Id == pending.Program.Id))
+            {
+                _beforeRemoval = null;
+                ResidueFilter.IsChecked = true;
+                DriveFilter.SelectedIndex = 0;
+            }
             PopulateDrives();
             ApplyFilter();
-            StatusText.Text = result.removal ?? (_projectsReadable
-                ? "Размер рассчитан по найденным папкам. Оценки Windows помечены отдельно."
-                : "Не удалось прочитать сохранённые привязки проектов.");
+            StatusText.Text = result.removal ?? (!_projectsReadable
+                ? "Не удалось прочитать сохранённые привязки проектов."
+                : result.historyError ? "Не удалось прочитать или сохранить историю папок и записей."
+                : "Размер рассчитан по найденным папкам. Оценки Windows помечены отдельно.");
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         catch (Exception ex)
@@ -91,10 +107,11 @@ public partial class ProgramsWindow : Window
 
     static string RemovalSummary(ProgramUsage before, List<ProgramUsage> after, CancellationToken ct)
     {
-        if (after.Any(p => p.Program.Id == before.Program.Id))
+        if (after.Any(p => !p.Program.IsResidue && p.Program.Id == before.Program.Id))
             return $"«{before.Program.Name}» ещё в списке. Завершите удаление и нажмите «Обновить».";
 
-        var oldFolders = before.Folders.Where(f => f.State == FolderSizeState.Measured).ToArray();
+        var oldFolders = before.Folders.Where(f => f.State == FolderSizeState.Measured &&
+            !f.Folder.Suggested && f.Folder.Kind != ProgramFolderKind.Project).ToArray();
         var cuts = after.SelectMany(p => p.Folders).Select(f => f.Folder.Path)
             .Concat(before.Folders.Select(f => f.Folder.Path)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var current = oldFolders.Select(f => ProgramInventory.MeasureFolder(f.Folder, cuts, ct)).ToArray();
@@ -129,14 +146,21 @@ public partial class ProgramsWindow : Window
         var previous = (ProgramList.SelectedItem as ProgramRow)?.Usage.Program.Id;
         var query = SearchBox.Text.Trim();
         var drive = DriveFilter.SelectedIndex > 0 ? DriveFilter.SelectedItem as string : null;
-        _visible = _programs.Where(p => p.Program.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
-                                        p.Program.Publisher.Contains(query, StringComparison.CurrentCultureIgnoreCase))
+        var residues = ResidueFilter?.IsChecked == true;
+        bool Matches(string text) => text.Contains(query, StringComparison.CurrentCultureIgnoreCase);
+        _visible = _programs.Where(p => p.Program.IsResidue == residues)
             .Select(p => new ProgramRow(p, drive))
             .Where(p => drive is null || p.Folders.Count > 0)
+            .Where(p => Matches(p.Name) || Matches(p.Usage.Program.Publisher) ||
+                p.Folders.Any(f => Matches(f.Folder.Path)) ||
+                p.Usage.Program.Registry.Any(r => Matches(r.DisplayPath) ||
+                    r.ExpectedExecutable is { } executable && Matches(executable)))
             .OrderByDescending(p => p.SortBytes).ThenBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
         ProgramList.ItemsSource = _visible;
         ProgramList.SelectedItem = _visible.FirstOrDefault(p => p.Usage.Program.Id == previous) ?? _visible.FirstOrDefault();
-        EmptyDetails.Text = _visible.Count == 0 ? "Программы не найдены." : "Выберите программу, чтобы посмотреть её папки.";
+        EmptyDetails.Text = _visible.Count == 0
+            ? (residues ? "В истории Roomy следы удаления не найдены." : "Программы не найдены.")
+            : "Выберите программу, чтобы посмотреть её папки.";
         if (MapMode.IsChecked == true) DrawMap();
     }
 
@@ -228,18 +252,40 @@ public partial class ProgramsWindow : Window
         if (row is null) return;
         var app = row.Usage.Program;
         ProgramName.Text = app.Name;
-        ProgramDetail.Text = string.Join(" · ", new[] { row.Source, app.Publisher, app.Version, row.Size }
+        var footprint = app.IsResidue ? "Отсутствует в текущем списке" :
+            app.Registry.Count > 0 && row.Folders.Any(f => f.Folder.Kind == ProgramFolderKind.Installation) &&
+            row.Folders.Where(f => f.Folder.Kind == ProgramFolderKind.Installation).All(f => f.State == FolderSizeState.Missing)
+                ? "Путь установки не найден" : "";
+        ProgramDetail.Text = string.Join(" · ", new[] { row.Source, app.Publisher, app.Version, row.Size, footprint }
             .Where(s => !string.IsNullOrWhiteSpace(s)).Distinct());
-        ProjectButton.IsEnabled = !_demo && !_busy && _projectsReadable;
+        ProjectButton.IsEnabled = !_demo && !_busy && _projectsReadable && !app.IsResidue;
         RemoveButton.IsEnabled = !_demo && !_busy && app.RemovalId != null;
         Folders.Children.Clear();
         if (row.Folders.Count == 0) Folders.Children.Add(new TextBlock
         {
-            Text = "Папки не определены. Можно привязать папку проекта.",
+            Text = app.IsResidue ? "Сохранились записи реестра." : "Папки не определены. Можно привязать папку проекта.",
             Style = (Style)FindResource("MutedText"),
         });
         foreach (var folder in row.Folders.OrderBy(f => f.Folder.Kind).ThenByDescending(f => f.Bytes))
             AddFolderRow(app, folder);
+        if (app.Registry.Count == 0) return;
+        Folders.Children.Add(new TextBlock
+        {
+            Text = "Реестр", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 8, 0, 6),
+        });
+        foreach (var item in app.Registry)
+        {
+            Folders.Children.Add(new TextBlock
+            {
+                Text = item.Source + " · " + item.DisplayPath,
+                Style = (Style)FindResource("MutedText"), Margin = new Thickness(0, 0, 0, 6), FontSize = 12,
+            });
+            AddLink(Folders, "Копировать запись", () =>
+            {
+                try { Clipboard.SetText(item.DisplayPath); }
+                catch (System.Runtime.InteropServices.ExternalException) { StatusText.Text = "Не удалось скопировать запись."; }
+            });
+        }
     }
 
     void AddFolderRow(InstalledProgram app, MeasuredFolder folder)
@@ -267,6 +313,12 @@ public partial class ProgramsWindow : Window
             Text = folder.Folder.Path, Style = (Style)FindResource("MutedText"),
             Margin = new Thickness(0, 3, 0, 4), FontSize = 12,
         });
+        if (folder.Folder.Evidence is { } evidence)
+            panel.Children.Add(new TextBlock
+            {
+                Text = folder.Folder.Suggested ? evidence + " · вне итога" : evidence,
+                Style = (Style)FindResource("MutedText"), FontSize = 12,
+            });
         var actions = new WrapPanel();
         if (folder.State is not (FolderSizeState.Missing or FolderSizeState.Unavailable))
             AddLink(actions, "На карте диска", () =>
@@ -294,7 +346,7 @@ public partial class ProgramsWindow : Window
 
     async void AddProject_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy || _demo || !_projectsReadable || ProgramList.SelectedItem is not ProgramRow row) return;
+        if (_busy || _demo || !_projectsReadable || ProgramList.SelectedItem is not ProgramRow row || row.Usage.Program.IsResidue) return;
         var picker = new OpenFolderDialog { Title = "Выберите папку проекта" };
         if (picker.ShowDialog(this) != true) return;
         var path = ProgramInventory.NormalizeFolder(picker.FolderName);

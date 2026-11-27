@@ -47,6 +47,9 @@
         <DockPanel LastChildFill="True">
             <Button x:Name="RefreshButton" DockPanel.Dock="Right" Style="{StaticResource SecondaryButton}"
                     Content="Обновить" Padding="15,7" Click="Refresh_Click" />
+            <CheckBox x:Name="ResidueFilter" DockPanel.Dock="Right" Content="Следы удаления" Margin="0,0,16,0"
+                      Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" Checked="Filter_Changed" Unchecked="Filter_Changed"
+                      ToolTip="Папки и записи программ, которые Roomy видел раньше" />
             <TextBlock Text="Программы" FontSize="29" FontWeight="Bold" FontFamily="{StaticResource DisplayFont}" />
         </DockPanel>
         <Grid Grid.Row="1" Margin="0,16,0,14">
@@ -60,7 +63,7 @@
                          Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource TextBrush}"
                          CaretBrush="{StaticResource TextBrush}" BorderBrush="{StaticResource LineBrush}"
                          AutomationProperties.Name="Поиск программы" TextChanged="Filter_Changed" />
-                <TextBlock Text="Поиск по названию или издателю" Margin="11,0,0,0"
+                <TextBlock Text="Поиск по программе, папке или реестру" Margin="11,0,0,0"
                            VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{StaticResource MutedBrush}">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
