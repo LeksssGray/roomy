@@ -31,6 +31,19 @@ static class Program
                 var snapshotIndex = Array.IndexOf(args, "--snapshot");
                 var snapshot = snapshotIndex >= 0 && snapshotIndex + 1 < args.Length ? args[snapshotIndex + 1] : null;
                 await CheckLifecycle(snapshot);
+                var programsSnapshotIndex = Array.IndexOf(args, "--programs-snapshot");
+                var programsSnapshot = programsSnapshotIndex >= 0 && programsSnapshotIndex + 1 < args.Length
+                    ? args[programsSnapshotIndex + 1] : null;
+                await ProgramChecks.Run(programsSnapshot);
+                if (args.Contains("--programs-real"))
+                {
+                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(40));
+                    var programs = await Task.Run(() => ProgramInventory.Measure(ProgramInventory.Read(), [], timeout.Token));
+                    if (!programs.Any(p => p.HasSize && p.Bytes > 0))
+                        throw new InvalidOperationException("The Windows program inventory returned no measured folders.");
+                    var sources = string.Join(", ", programs.GroupBy(p => p.Program.Source).Select(g => $"{g.Key}: {g.Count()}"));
+                    Console.WriteLine($"PASS: Windows programs ({sources}), {programs.Count(p => p.HasSize)} with measured folders.");
+                }
                 if (args.Contains("--notifications")) CheckNotifications();
                 Console.WriteLine("Desktop checks passed.");
             }

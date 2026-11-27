@@ -138,6 +138,7 @@ public sealed class MainVM : ObservableObject
 
             BuildCategories(results);
             await Task.Delay(400);
+            HasCleanupScan = true;
             State = AppState.Results;
         }
         catch (Exception ex)
@@ -194,6 +195,22 @@ public sealed class MainVM : ObservableObject
         Raise(nameof(SelectedTotal));
         Raise(nameof(CleanButtonText));
         CleanCommand.RaiseCanExecuteChanged();
+    }
+
+    bool _hasCleanupScan;
+    public bool HasCleanupScan { get => _hasCleanupScan; private set => Set(ref _hasCleanupScan, value); }
+
+    public async Task OpenProgramFolderAsync(MeasuredFolder folder)
+    {
+        if (_busy || SpaceMap.IsScanning)
+        {
+            ShowToast("Дождитесь окончания текущей операции.");
+            return;
+        }
+        var opening = SpaceMap.OpenFolderAsync(folder);
+        IsSpaceTab = true;
+        State = AppState.Results;
+        await opening;
     }
 
     bool _spaceTab;

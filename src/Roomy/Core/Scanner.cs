@@ -149,7 +149,7 @@ public static class Scanner
         ("Chromium", Env.L("Chromium", "User Data")),
     ];
 
-    static IEnumerable<string> ChromiumCaches(string userData)
+    internal static IEnumerable<string> ChromiumCaches(string userData)
     {
         if (!Directory.Exists(userData)) yield break;
         yield return Path.Combine(userData, "ShaderCache");

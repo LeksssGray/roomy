@@ -42,7 +42,7 @@ public static class Steam
                    .ToList();
     }
 
-    public static List<SteamGame> Games()
+    public static List<SteamGame> Games(bool includeWithoutHistory = false)
     {
         var list = new List<SteamGame>();
         foreach (var lib in Libraries())
@@ -67,8 +67,9 @@ public static class Steam
                     var name = V("name");
                     var dir = V("installdir");
                     var lastPlayed = V("LastPlayed");
-                    // No LastPlayed means we can't tell, so we don't guess.
-                    if (id is null || name is null || dir is null || lastPlayed is null || id == RedistributablesAppId) continue;
+                    if (id is null || name is null || string.IsNullOrWhiteSpace(dir) || id == RedistributablesAppId ||
+                        dir is "." or ".." || dir.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
+                        (!includeWithoutHistory && lastPlayed is null)) continue;
 
                     long.TryParse(V("SizeOnDisk"), out var size);
                     DateTime? lp = long.TryParse(lastPlayed, out var t) && t > 0

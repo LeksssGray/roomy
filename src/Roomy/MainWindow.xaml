@@ -190,6 +190,8 @@
                     </Border>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                    <Button x:Name="ProgramsButton" Style="{StaticResource ChromeButton}" Content="&#xE71D;" ToolTip="Программы"
+                            AutomationProperties.Name="Программы" Click="Programs_Click" />
                     <Button Style="{StaticResource ChromeButton}" Content="&#xE713;" ToolTip="Настройки"
                             AutomationProperties.Name="Настройки" Command="{Binding SettingsCommand}" />
                     <Button Style="{StaticResource ChromeButton}" Content="&#xE921;" Click="Min_Click" />
@@ -278,8 +280,7 @@
                                     <TextBlock Text="Проверить компьютер" Margin="10,0,0,0" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
-                            <TextBlock Text="Это займёт немного времени. Удаление — только с вашего согласия."
-                                       Foreground="{StaticResource FaintBrush}" FontSize="13" VerticalAlignment="Center" Margin="20,0,0,0" TextWrapping="Wrap" MaxWidth="390" />
+                            <Button Style="{StaticResource SecondaryButton}" Content="Программы" Margin="12,0,0,0" Click="Programs_Click" />
                         </StackPanel>
                     </StackPanel>
                 </Grid>
@@ -318,12 +319,12 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <Grid Margin="40,10,40,0">
+                    <Grid Margin="40,10,40,0" MinHeight="44">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel>
+                        <StackPanel Visibility="{Binding HasCleanupScan, Converter={StaticResource VisIf}}">
                             <TextBlock Text="Найдено" FontSize="15" Foreground="{StaticResource MutedBrush}" />
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
                                 <c:AnimatedBytes Bytes="{Binding SafeTotal}" FontSize="50" FontWeight="Bold" Duration="1200"
@@ -335,8 +336,10 @@
                         <Border Grid.Column="1" VerticalAlignment="Bottom" CornerRadius="12" Padding="4"
                                 Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1">
                             <StackPanel Orientation="Horizontal">
-                                <RadioButton Style="{StaticResource SegmentTab}" GroupName="tabs" Content="Очистка" IsChecked="{Binding IsCleanupTab}" />
+                                <RadioButton Style="{StaticResource SegmentTab}" GroupName="tabs" Content="Очистка" IsChecked="{Binding IsCleanupTab}"
+                                             Visibility="{Binding HasCleanupScan, Converter={StaticResource VisIf}}" />
                                 <RadioButton Style="{StaticResource SegmentTab}" GroupName="tabs" Content="Карта диска" IsChecked="{Binding IsSpaceTab}" />
+                                <Button Style="{StaticResource LinkButton}" Content="Главная" Padding="12,7" Command="{Binding HomeCommand}" />
                             </StackPanel>
                         </Border>
                     </Grid>

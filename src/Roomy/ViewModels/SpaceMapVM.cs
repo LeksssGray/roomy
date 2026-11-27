@@ -12,6 +12,8 @@ public sealed class SpaceMapVM : ObservableObject
     readonly MainVM _main;
     SpaceNode? _root, _current;
     DriveVM? _drive;
+    string? _folder;
+    long _demoFolderBytes;
     long _unseen;
 
     public SpaceMapVM(MainVM main)
@@ -21,6 +23,7 @@ public sealed class SpaceMapVM : ObservableObject
         SelectDriveCommand = new RelayCommand<DriveVM>(d =>
         {
             if (d is null || IsScanning) return;
+            _folder = null;
             Select(d);
             _ = ScanAsync();
         });
@@ -77,6 +80,17 @@ public sealed class SpaceMapVM : ObservableObject
         if (!HasData && !IsScanning) _ = ScanAsync();
     }
 
+    public Task OpenFolderAsync(MeasuredFolder folder)
+    {
+        if (IsScanning) return Task.CompletedTask;
+        var path = folder.Folder.Path;
+        _folder = path;
+        _demoFolderBytes = folder.Bytes;
+        var drive = Drives.FirstOrDefault(d => string.Equals(d.Root, Path.GetPathRoot(path), StringComparison.OrdinalIgnoreCase));
+        if (drive is not null) Select(drive);
+        return ScanAsync();
+    }
+
     async Task ScanAsync()
     {
         if (IsScanning) return;
@@ -97,8 +111,15 @@ public sealed class SpaceMapVM : ObservableObject
                     ProgressText = $"Файлов: {i * 41_337:N0} · {Format.Bytes((long)(i * 18.9 * (1L << 30)))}";
                     await Task.Delay(110);
                 }
-                root = DemoData.SpaceTree();
-                big = DemoData.BigFiles();
+                root = _folder is null ? DemoData.SpaceTree() : new SpaceNode
+                {
+                    Name = Path.GetFileName(_folder),
+                    FullPath = _folder,
+                    Size = _demoFolderBytes,
+                    FileBytes = _demoFolderBytes,
+                    FileCount = _demoFolderBytes > 0 ? 1 : 0,
+                };
+                big = _folder is null ? DemoData.BigFiles() : [];
             }
             else
             {
@@ -106,14 +127,19 @@ public sealed class SpaceMapVM : ObservableObject
                 var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
                 timer.Tick += (_, _) => ProgressText = $"Файлов: {scanner.Files:N0} · {Format.Bytes(scanner.Bytes)}";
                 timer.Start();
-                try { root = await Task.Run(() => scanner.Scan(drive.Root)); }
+                try { root = await Task.Run(() =>
+                {
+                    if (_folder is not null && !ProgramInventory.CanTraverseFolder(_folder))
+                        throw new IOException("Папка недоступна или является ссылкой.");
+                    return scanner.Scan(_folder ?? drive.Root);
+                }); }
                 finally { timer.Stop(); }
                 big = scanner.BigFiles;
             }
 
-            root.Name = drive.Title;
+            root.Name = _folder is null ? drive.Title : Path.GetFileName(_folder);
             _root = root;
-            _unseen = Math.Max(0, drive.Used - root.Size);
+            _unseen = _folder is null ? Math.Max(0, drive.Used - root.Size) : 0;
             BigFiles.Clear();
             foreach (var b in big) BigFiles.Add(new BigFileVM(b));
             Navigate(root);
@@ -143,7 +169,7 @@ public sealed class SpaceMapVM : ObservableObject
         }
         if (node.FileBytes > 0)
         {
-            var label = atRoot ? "Системные файлы (подкачка, гибернация и др.)" : $"Файлы в этой папке ({node.FileCount:N0})";
+            var label = atRoot && _folder is null ? "Системные файлы (подкачка, гибернация и др.)" : $"Файлы в этой папке ({node.FileCount:N0})";
             rows.Add(SpaceRowVM.Files(label, node.FileBytes, denominator, node.FullPath));
         }
         if (atRoot && _unseen > 1L << 30)

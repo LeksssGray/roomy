@@ -99,6 +99,13 @@ public partial class MainWindow : Window
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
     void Close_Click(object sender, RoutedEventArgs e) => Close();
 
+    async void Programs_Click(object sender, RoutedEventArgs e)
+    {
+        var programs = new ProgramsWindow(_vm.IsDemo) { Owner = this };
+        programs.ShowDialog();
+        if (programs.FolderToOpen is { } folder) await _vm.OpenProgramFolderAsync(folder);
+    }
+
     // ---------- share card ----------
 
     BitmapSource RenderShareCard()
