@@ -94,7 +94,7 @@
             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                 <c:DeveloperMark Width="40" Height="40" Margin="0,0,10,0" />
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="Русская версия · А. О. Серов" FontSize="12.5" />
+                    <TextBlock Text="Доработка и локализация · А. О. Серов" FontSize="12.5" />
                     <TextBlock Text="Оригинальное приложение: krezio · MIT" FontSize="11.5"
                                Foreground="{StaticResource FaintBrush}" Margin="0,2,0,0" />
                 </StackPanel>
