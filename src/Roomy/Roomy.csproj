@@ -9,7 +9,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Roomy</RootNamespace>
     <AssemblyName>Roomy</AssemblyName>
-    <Version>0.1.2</Version>
+    <Version>0.2.0</Version>
     <Product>Roomy</Product>
     <Company>krezio</Company>
     <Authors>krezio</Authors>
@@ -19,6 +19,11 @@
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <!-- WPF owns DPI awareness; Windows Forms is only used for the tray icon. -->
     <NoWarn>$(NoWarn);SYSLIB1054;CA1416;WFO0003</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(RoomyPortable)' == 'true'">
+    <DefineConstants>$(DefineConstants);ROOMY_PORTABLE</DefineConstants>
+    <Product>Roomy Portable</Product>
   </PropertyGroup>
 
   <ItemGroup>

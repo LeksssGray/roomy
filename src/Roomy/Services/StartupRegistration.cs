@@ -60,7 +60,7 @@ public static class StartupRegistration
 
     internal static string StartupCommand(string exe)
     {
-        // Portable downloads may be renamed. Only reject a framework host or invalid executable path.
+        // Installed paths can contain spaces; reject a framework host or invalid executable path.
         if (!Path.IsPathFullyQualified(exe) || exe.Contains('"') ||
             !string.Equals(Path.GetExtension(exe), ".exe", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(Path.GetFileNameWithoutExtension(exe), "dotnet", StringComparison.OrdinalIgnoreCase))

@@ -18,11 +18,19 @@ public sealed record Preferences
         LowSpaceGB = Math.Clamp(LowSpaceGB, 1, 500),
         CheckEveryMinutes = CheckEveryMinutes == 60 ? 60 : 30,
     };
+
+    public Preferences WithInstallerOptions(bool startup, bool lowSpace, bool weekly) => this with
+    {
+        RunInBackground = startup || lowSpace || weekly,
+        LowSpaceAlerts = lowSpace,
+        WeeklyChecks = weekly,
+        LastWeeklyCheck = weekly && !WeeklyChecks ? null : LastWeeklyCheck,
+    };
 }
 
 public sealed class PreferencesStore(string path)
 {
-    public static string DefaultPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Roomy", "settings.json");
+    public static string DefaultPath => Path.Combine(AppProfile.DataDirectory, "settings.json");
     public string? LoadError { get; private set; }
 
     public Preferences Load()

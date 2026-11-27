@@ -19,6 +19,7 @@ public partial class MainWindow : Window
     public MainWindow(MainVM vm)
     {
         InitializeComponent();
+        if (AppProfile.IsPortable) Title = "Roomy Portable";
         _vm = vm;
         DataContext = vm;
         vm.PropertyChanged += OnVmChanged;

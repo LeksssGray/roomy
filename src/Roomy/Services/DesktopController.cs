@@ -21,8 +21,10 @@ public sealed class DesktopController : IDisposable
     bool _disposed;
     public Preferences Preferences { get; private set; }
     public bool IsDemo => _vm.IsDemo;
-    public bool CanConfigure => IsDemo || !Admin.IsElevated;
-    public string? Status => IsDemo ? "Настройки деморежима не сохраняются. Автозагрузка и уведомления Windows отключены." :
+    public bool IsPortable => AppProfile.IsPortable;
+    public bool CanConfigure => !IsPortable && (IsDemo || !Admin.IsElevated);
+    public string? Status => IsPortable ? "Roomy Portable. Автозапуск, фоновая работа и уведомления доступны в версии с установщиком." :
+        IsDemo ? "Настройки деморежима не сохраняются. Автозагрузка и уведомления Windows отключены." :
         Admin.IsElevated ? "Запустите Roomy без прав администратора, чтобы изменить фоновые проверки и автозагрузку." : _store.LoadError ?? _notifications.Error;
 
     public DesktopController(MainWindow window, MainVM vm, Action quit)
@@ -30,7 +32,7 @@ public sealed class DesktopController : IDisposable
         _window = window;
         _vm = vm;
         _quit = quit;
-        Preferences = vm.IsDemo || Admin.IsElevated ? new() : _store.Load();
+        Preferences = IsPortable || vm.IsDemo || Admin.IsElevated ? new() : _store.Load();
         _monitor = new(() => Preferences,
             () => _disposed || _vm.State is AppState.Scanning or AppState.Cleaning || _vm.SpaceMap.IsScanning,
             (title, body, tag) => !IsDemo && _notifications.Show(title, body, tag), Save);
@@ -46,7 +48,7 @@ public sealed class DesktopController : IDisposable
 
     public void Save(Preferences preferences)
     {
-        if (_disposed) return;
+        if (_disposed || IsPortable) return;
         if (!IsDemo) _store.Save(preferences);
         Preferences = preferences.Normalize();
     }
@@ -59,6 +61,7 @@ public sealed class DesktopController : IDisposable
 
     void Refresh()
     {
+        if (IsPortable) return;
         if (Preferences.RunInBackground)
         {
             EnsureTray();

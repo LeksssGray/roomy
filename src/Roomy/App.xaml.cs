@@ -19,17 +19,18 @@ public partial class App : Application
             new FrameworkPropertyMetadata(System.Windows.Markup.XmlLanguage.GetLanguage("ru-RU")));
         base.OnStartup(e);
         var args = e.Args;
-        if (args.Contains("--uninstall"))
+        var uninstall = args.Contains("--uninstall");
+        var prepareUpdate = args.Contains("--prepare-update");
+        var configureInstall = args.Contains("--configure-install");
+        if (AppProfile.IsPortable && (uninstall || prepareUpdate || configureInstall ||
+            args.Contains("--background") || args.Contains("-ToastActivated")))
         {
-            try
-            {
-                using var instance = new SingleInstance(Admin.IsElevated, demo: false);
-                if (!instance.IsPrimary) await instance.SendAsync("quit");
-                await StartupRegistration.SetEnabledAsync(false);
-                Microsoft.Toolkit.Uwp.Notifications.ToastNotificationManagerCompat.Uninstall();
-            }
-            catch { /* Uninstall must still work when Windows registration is already gone. */ }
-            Shutdown();
+            Shutdown(2);
+            return;
+        }
+        if (uninstall || prepareUpdate || configureInstall)
+        {
+            Shutdown(await RunInstallerCommandAsync(args, uninstall, configureInstall));
             return;
         }
         string? Arg(string name)
@@ -96,7 +97,8 @@ public partial class App : Application
         if (!automation)
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            _instance = new SingleInstance(Admin.IsElevated, demo);
+            _instance = new SingleInstance(Admin.IsElevated, demo,
+                AppProfile.IsPortable ? AppProfile.DataDirectory : null);
             if (!_instance.IsPrimary)
             {
                 if (notificationLaunch)
@@ -154,6 +156,44 @@ public partial class App : Application
         if (shots != null) _ = window.RunScreenshotsAsync(shots);
         else if (record != null) _ = window.RecordDemoAsync(record);
         else if (args.Contains("--scan")) vm.ScanCommand.Execute(null);
+    }
+
+    static async Task<int> RunInstallerCommandAsync(string[] args, bool uninstall, bool configure)
+    {
+        try
+        {
+            if (configure)
+            {
+                var startup = args.Contains("--start-with-windows");
+                var lowSpace = args.Contains("--low-space-check");
+                var weekly = args.Contains("--weekly-check");
+                var store = new PreferencesStore(PreferencesStore.DefaultPath);
+                var current = store.Load();
+                if (store.LoadError is not null) return 1;
+                store.Save(current.WithInstallerOptions(startup, lowSpace, weekly));
+                await StartupRegistration.SetEnabledAsync(startup);
+                return 0;
+            }
+
+            foreach (var elevated in new[] { false, true })
+            {
+                using var instance = new SingleInstance(elevated, demo: false);
+                if (instance.IsPrimary) continue;
+                await instance.SendAsync("quit");
+                if (!await instance.WaitForExitAsync(TimeSpan.FromSeconds(8))) return 2;
+            }
+            if (uninstall)
+            {
+                await StartupRegistration.SetEnabledAsync(false);
+                Microsoft.Toolkit.Uwp.Notifications.ToastNotificationManagerCompat.Uninstall();
+            }
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.WriteLine("Roomy setup: " + ex.Message);
+            return 1;
+        }
     }
 
     async Task ExitUnusedActivationAsync()

@@ -6,7 +6,7 @@ public sealed record ProjectLink(string ProgramId, string Path);
 
 public sealed class ProgramProjects(string path)
 {
-    public static string DefaultPath => Path.Combine(Env.Local, "Roomy", "program-projects.json");
+    public static string DefaultPath => Path.Combine(AppProfile.DataDirectory, "program-projects.json");
 
     public List<ProjectLink> Load() => File.Exists(path)
         ? (JsonSerializer.Deserialize<List<ProjectLink>>(File.ReadAllText(path)) ?? [])

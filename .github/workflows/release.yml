@@ -17,26 +17,32 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Publish single-file exe
+      - name: Build portable and installed editions
         shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          dotnet publish src/Roomy -c Release -r win-x64 --self-contained `
-            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
-            -p:EnableCompressionInSingleFile=true -p:DebugType=none -o dist/publish
-          Copy-Item dist/publish/Roomy.exe dist/Roomy-portable.exe
-
-      - name: Build installer
-        shell: pwsh
-        run: |
-          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
-          $version = "${{ github.ref_name }}".TrimStart("v")
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=$version" installer/roomy.iss
+          $download = Join-Path $env:RUNNER_TEMP 'innosetup-6.7.4.exe'
+          $compiler = Join-Path $env:RUNNER_TEMP 'Inno Setup'
+          Invoke-WebRequest 'https://github.com/jrsoftware/issrc/releases/download/is-6_7_4/innosetup-6.7.4.exe' -OutFile $download
+          $signature = Get-AuthenticodeSignature -LiteralPath $download
+          if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Pyrsys B\.V\.') {
+            throw 'Unexpected signature on the Inno Setup compiler.'
+          }
+          $setup = Start-Process -FilePath $download -ArgumentList @('/PORTABLE=1', "/DIR=`"$compiler`"", '/VERYSILENT', '/NORESTART', '/SUPPRESSMSGBOXES', '/SP-', '/TASKS=') -WindowStyle Hidden -Wait -PassThru
+          if ($setup.ExitCode -ne 0) { throw 'Inno Setup compiler setup failed.' }
+          & ./tools/build-windows.ps1 -InnoCompiler (Join-Path $compiler 'ISCC.exe') -Version $env:RELEASE_TAG.TrimStart('v')
 
       - name: Upload to the release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          gh release view "${{ github.ref_name }}" 2>$null
-          if ($LASTEXITCODE -ne 0) { gh release create "${{ github.ref_name }}" --generate-notes --title "Roomy ${{ github.ref_name }}" }
-          gh release upload "${{ github.ref_name }}" dist/Roomy-Setup.exe dist/Roomy-portable.exe --clobber
+          gh release view $env:RELEASE_TAG 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $env:RELEASE_TAG artifacts/windows/Roomy-Setup.exe artifacts/windows/Roomy-Portable.exe --generate-notes --title "Roomy $env:RELEASE_TAG"
+          } else {
+            gh release upload $env:RELEASE_TAG artifacts/windows/Roomy-Setup.exe artifacts/windows/Roomy-Portable.exe --clobber
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

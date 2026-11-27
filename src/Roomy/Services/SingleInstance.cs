@@ -12,14 +12,17 @@ public sealed class SingleInstance : IDisposable
     readonly CancellationTokenSource _stop = new();
     public bool IsPrimary { get; }
 
-    public SingleInstance(bool elevated, bool demo) : this(InstanceName(elevated, demo)) { }
+    public SingleInstance(bool elevated, bool demo, string? portableDirectory = null)
+        : this(InstanceName(elevated, demo, portableDirectory)) { }
 
-    static string InstanceName(bool elevated, bool demo)
+    static string InstanceName(bool elevated, bool demo, string? portableDirectory)
     {
         using var identity = WindowsIdentity.GetCurrent();
         var user = identity.User?.Value ?? Environment.UserName;
         using var process = System.Diagnostics.Process.GetCurrentProcess();
-        return $"Roomy.{user}.{process.SessionId}.{(elevated ? "admin" : "user")}{(demo ? ".demo" : "")}";
+        var scope = portableDirectory is null ? "" : ".portable." + Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(portableDirectory.ToUpperInvariant())).AsSpan(0, 8));
+        return $"Roomy.{user}.{process.SessionId}.{(elevated ? "admin" : "user")}{(demo ? ".demo" : "")}{scope}";
     }
 
     internal SingleInstance(string name)
@@ -71,6 +74,24 @@ public sealed class SingleInstance : IDisposable
             return true;
         }
         catch (Exception ex) when (ex is IOException or TimeoutException) { return false; }
+    }
+
+    public async Task<bool> WaitForExitAsync(TimeSpan timeout)
+    {
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        while (timer.Elapsed < timeout)
+        {
+            var acquired = false;
+            try { acquired = _mutex.WaitOne(0); }
+            catch (AbandonedMutexException) { acquired = true; }
+            if (acquired)
+            {
+                _mutex.ReleaseMutex();
+                return true;
+            }
+            await Task.Delay(100);
+        }
+        return false;
     }
 
     public void Dispose()

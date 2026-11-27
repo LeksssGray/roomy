@@ -16,6 +16,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.1" PrivateAssets="all" />
     <Using Include="Xunit" />
     <Compile Include="../../src/Roomy/Core/Preferences.cs" Link="Core/Preferences.cs" />
+    <Compile Include="../../src/Roomy/Core/AppProfile.cs" Link="Core/AppProfile.cs" />
     <Compile Include="../../src/Roomy/Core/Format.cs" Link="Core/Format.cs" />
     <Compile Include="../../src/Roomy/Services/SingleInstance.cs" Link="Services/SingleInstance.cs" />
     <Compile Include="../../src/Roomy/Services/NotificationService.cs" Link="Services/NotificationService.cs" />

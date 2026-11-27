@@ -18,7 +18,8 @@ public partial class SettingsWindow : Window
     {
         InitializeComponent();
         var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-        VersionText.Text = v is null ? "Roomy" : $"Roomy {v.Major}.{v.Minor}.{v.Build}";
+        var edition = desktop.IsPortable ? "Roomy Portable" : "Roomy";
+        VersionText.Text = v is null ? edition : $"{edition} {v.Major}.{v.Minor}.{v.Build}";
         _desktop = desktop;
         var p = desktop.Preferences;
         BackgroundCheck.IsChecked = p.RunInBackground;
@@ -43,6 +44,7 @@ public partial class SettingsWindow : Window
 
     async Task ReadStartupAsync()
     {
+        if (_desktop.IsPortable) return;
         try
         {
             _startup = _desktop.IsDemo ? new(false, true) : await StartupRegistration.ReadAsync();

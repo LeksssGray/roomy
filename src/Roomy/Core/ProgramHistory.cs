@@ -4,7 +4,7 @@ namespace Roomy.Core;
 
 public sealed class ProgramHistory(string path)
 {
-    public static string DefaultPath => Path.Combine(Env.Local, "Roomy", "program-footprints.json");
+    public static string DefaultPath => Path.Combine(AppProfile.DataDirectory, "program-footprints.json");
 
     public (List<InstalledProgram> Programs, bool HistoryError) Merge(
         List<InstalledProgram> installed, CancellationToken ct)
